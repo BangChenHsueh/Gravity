@@ -1,0 +1,12 @@
+D:/Code/Gravity/build/CMakeFiles/glad.dir
+D:/Code/Gravity/build/CMakeFiles/GravityWindow.dir
+D:/Code/Gravity/build/CMakeFiles/INSTALL.dir
+D:/Code/Gravity/build/CMakeFiles/ALL_BUILD.dir
+D:/Code/Gravity/build/CMakeFiles/ZERO_CHECK.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/CMakeFiles/uninstall.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/CMakeFiles/INSTALL.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/CMakeFiles/ALL_BUILD.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/src/CMakeFiles/glfw.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/src/CMakeFiles/update_mappings.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/src/CMakeFiles/INSTALL.dir
+D:/Code/Gravity/build/dependencies/glfw-3.4/docs/CMakeFiles/INSTALL.dir
