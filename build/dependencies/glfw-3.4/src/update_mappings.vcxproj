@@ -249,7 +249,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <None Include="D:\Code\Gravity\build\dependencies\glfw-3.4\src\CMakeFiles\update_mappings">
     </None>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="D:\Code\Gravity\build\ZERO_CHECK.vcxproj">
       <Project>{DC64EE11-3C43-34CB-890E-A5ED0CEED742}</Project>

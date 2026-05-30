@@ -13,6 +13,7 @@ target_include_directories(glad PUBLIC dependencies/glad/include)
 include_directories(
     dependencies/glad/include
     dependencies/glfw-3.4/include
+    dependencies/glm
 )
 
 add_executable(GravityWindow src/main.cpp)

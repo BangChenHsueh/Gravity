@@ -1,180 +1,220 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-
-#include <sstream>
 #include <fstream>
+#include <sstream>
 #include <string>
+#include <vector>
+#include <cmath>
 
-const unsigned int SCR_WIDTH = 800;
+// ── GLM (header-only math library) ─────────────────────────────────────────
+// Drop glm/ folder into dependencies/ and add to include_directories in CMake
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+// ── Constants ───────────────────────────────────────────────────────────────
+const unsigned int SCR_WIDTH  = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height){
-    glViewport(0, 0, width, height);
+// ── Camera state ────────────────────────────────────────────────────────────
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+
+float yaw   = -90.0f;   // look along -Z initially
+float pitch =   0.0f;
+float lastX = SCR_WIDTH  / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool  firstMouse = true;
+float fov = 45.0f;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+// ── Callbacks ───────────────────────────────────────────────────────────────
+void framebuffer_size_callback(GLFWwindow*, int w, int h){
+    glViewport(0, 0, w, h);
 }
+
+void mouse_callback(GLFWwindow*, double xpos, double ypos){
+    if(firstMouse){ lastX = xpos; lastY = ypos; firstMouse = false; }
+
+    float xoffset = (xpos - lastX) * 0.1f;   // sensitivity
+    float yoffset = (lastY - ypos) * 0.1f;   // reversed: y goes bottom→top
+    lastX = xpos; lastY = ypos;
+
+    yaw   += xoffset;
+    pitch += yoffset;
+    pitch  = glm::clamp(pitch, -89.0f, 89.0f);
+
+    glm::vec3 dir;
+    dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    dir.y = sin(glm::radians(pitch));
+    dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(dir);
+}
+
+void scroll_callback(GLFWwindow*, double, double yoffset){
+    fov = glm::clamp(fov - (float)yoffset, 1.0f, 90.0f);
+}
+
 void process_input(GLFWwindow* window){
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    float speed = 2.5f * deltaTime;
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cameraPos += speed * cameraFront;
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cameraPos -= speed * cameraFront;
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
+}
+
+// ── Shader helper ───────────────────────────────────────────────────────────
+std::string loadFile(const char* path){
+    std::ifstream f(path);
+    if(!f.is_open()){ std::cerr << "Cannot open: " << path << "\n"; return ""; }
+    std::stringstream ss; ss << f.rdbuf(); return ss.str();
+}
+
+unsigned int compileShader(GLenum type, const char* src){
+    unsigned int id = glCreateShader(type);
+    glShaderSource(id, 1, &src, NULL);
+    glCompileShader(id);
+    int ok; char log[512];
+    glGetShaderiv(id, GL_COMPILE_STATUS, &ok);
+    if(!ok){ glGetShaderInfoLog(id, 512, NULL, log); std::cerr << log << "\n"; }
+    return id;
+}
+
+unsigned int buildProgram(const char* vertPath, const char* fragPath){
+    std::string vs = loadFile(vertPath), fs = loadFile(fragPath);
+    unsigned int v  = compileShader(GL_VERTEX_SHADER,   vs.c_str());
+    unsigned int f  = compileShader(GL_FRAGMENT_SHADER, fs.c_str());
+    unsigned int p  = glCreateProgram();
+    glAttachShader(p, v); glAttachShader(p, f);
+    glLinkProgram(p);
+    int ok; char log[512];
+    glGetProgramiv(p, GL_LINK_STATUS, &ok);
+    if(!ok){ glGetProgramInfoLog(p, 512, NULL, log); std::cerr << log << "\n"; }
+    glDeleteShader(v); glDeleteShader(f);
+    return p;
+}
+
+// ── Sphere generation ───────────────────────────────────────────────────────
+// Produces interleaved [x,y,z, nx,ny,nz] vertices + index buffer.
+// stacks/slices control tessellation quality (32/32 is smooth enough).
+void buildSphere(float radius, int stacks, int slices,
+                 std::vector<float>& verts, std::vector<unsigned int>& idx)
+{
+    const float PI = 3.14159265359f;
+    for(int i = 0; i <= stacks; ++i){
+        float phi   = PI/2 - i * PI / stacks;       // latitude: 90°→-90°
+        float y     = radius * sin(phi);
+        float cosPhi = cos(phi);
+
+        for(int j = 0; j <= slices; ++j){
+            float theta = j * 2*PI / slices;         // longitude: 0→360°
+            float x = radius * cosPhi * cos(theta);
+            float z = radius * cosPhi * sin(theta);
+            // position
+            verts.push_back(x); verts.push_back(y); verts.push_back(z);
+            // normal (unit sphere: normal == position / radius)
+            verts.push_back(x/radius); verts.push_back(y/radius); verts.push_back(z/radius);
+        }
+    }
+
+    for(int i = 0; i < stacks; ++i){
+        for(int j = 0; j < slices; ++j){
+            unsigned int row1 = i   * (slices+1) + j;
+            unsigned int row2 = (i+1) * (slices+1) + j;
+            idx.push_back(row1); idx.push_back(row2);   idx.push_back(row1+1);
+            idx.push_back(row1+1); idx.push_back(row2); idx.push_back(row2+1);
+        }
     }
 }
 
-std::string loadShaderFile(const char* filePath){
-    std::ifstream inputFile(filePath);
-
-    if(!inputFile.is_open()){
-        std::cerr << "Unable to open file: " << filePath << std::endl;
-        return "";
-    }
-
-    std::stringstream buffer;
-    buffer << inputFile.rdbuf();
-    return buffer.str();
-}
-
-
-
+// ── Main ────────────────────────────────────────────────────────────────────
 int main(){
-
-    if(!glfwInit()){
-        std::cerr << "Failed to initialize GLFW\n";
-        return -1;
-    }
-
+    glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Gravity", NULL, NULL);
-    if(window == NULL){
-        std::cout << "Faild to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Gravity – Sphere", NULL, NULL);
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    
-    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-    
-    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+    glfwSetCursorPosCallback(window,       mouse_callback);
+    glfwSetScrollCallback(window,          scroll_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  // capture mouse
 
-    //Create shader sources
-    std::string vertexShaderCode = loadShaderFile("D:/Code/Gravity/src/shader.vert");
-    std::string fragmentShaderCode = loadShaderFile("D:/Code/Gravity/src/shader.frag");
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+    glEnable(GL_DEPTH_TEST);
 
-    const char* vertexShaderSource = vertexShaderCode.c_str();
-    const char* fragmentShaderSource = fragmentShaderCode.c_str();
+    unsigned int shader = buildProgram(
+        "D:/Code/Gravity/src/shader.vert",
+        "D:/Code/Gravity/src/shader.frag"
+    );
 
-    //Create Vertex Shader----------------------------------------------------------------------
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    // Build sphere mesh
+    std::vector<float>        verts;
+    std::vector<unsigned int> indices;
+    buildSphere(1.0f, 32, 32, verts, indices);
 
-    //compile vertex shader
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader); 
-    //check if shader compiled correctly
-    int success;
-    char infologs[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success){
-        glGetShaderInfoLog(vertexShader, 512, NULL, infologs);
-        std::cout << "ERROR::VERTEX::SHADER::COMPILATON::FAILED\n" << infologs << std::endl;
-    }
-
-    //Create Fragment Shader--------------------------------------------------------------------
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    //check if shader compiled correctly
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if(!success){
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infologs);
-        std::cout << "ERROR::FRAGMENT::SHADER::COMPILATION::FAILED\n" << infologs << std::endl;
-    }
-
-    //Create Shader Program and Link All Shaders-------------------------------------------------
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-    //link Shader
-    glAttachShader(shaderProgram, fragmentShader);
-    glAttachShader(shaderProgram, vertexShader);
-    glLinkProgram(shaderProgram);
-    //check for linking error
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success){
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infologs);
-        std::cout << "ERROR::SHADER::PROGRAM::LINK::FAILED\n" << infologs << std::endl;
-    }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    //Setup Vertex Data, along with VBO, VAO, etc
-    float vertices[] = {
-        0.5f,  0.5f, 0.0f,  // top right
-        0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
-    };
-
-    // float vertices[] = {
-    // // positions         // colors
-    //  0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
-    // -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
-    //  0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top 
-    // };    
-
-    int indices[] = {
-        0, 3, 2,
-        2, 1, 0
-    };
-    
-    unsigned int VAO;
-    unsigned int VBO;
-    unsigned int EBO;
-
-    glGenBuffers(1, &EBO);
-    glGenBuffers(1, &VBO);
+    unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
-    //setup VBO
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    //bind and setup VAO
     glBindVertexArray(VAO);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, verts.size()*sizeof(float), verts.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    //final settings:
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // layout 0 = position (xyz)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // layout 1 = normal (xyz)
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)(3*sizeof(float)));
+    glEnableVertexAttribArray(1);
 
+    glBindVertexArray(0);
+
+    // Render loop
     while(!glfwWindowShouldClose(window)){
-        //input
+        float current = (float)glfwGetTime();
+        deltaTime = current - lastFrame;
+        lastFrame = current;
+
         process_input(window);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
+        glUseProgram(shader);
 
-        //make Color change over time
-        float timeValue = glfwGetTime();
-        float greenValue = (sin(timeValue)/2.0f)+0.5f;
-        int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
-        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+        // Matrices
+        glm::mat4 model      = glm::mat4(1.0f);
+        glm::mat4 view       = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 projection = glm::perspective(glm::radians(fov),
+                                 (float)SCR_WIDTH/SCR_HEIGHT, 0.1f, 100.0f);
+
+        glUniformMatrix4fv(glGetUniformLocation(shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(glGetUniformLocation(shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+        // Lighting
+        glUniform3f(glGetUniformLocation(shader, "lightPos"),    2.0f, 2.0f, 2.0f);
+        glUniform3f(glGetUniformLocation(shader, "lightColor"),  1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(shader, "objectColor"), 0.3f, 0.6f, 1.0f);
 
         glBindVertexArray(VAO);
-        // glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices)/3);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         glfwSwapBuffers(window);
@@ -183,10 +223,8 @@ int main(){
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-
-    glDeleteProgram(shaderProgram);
-
+    glDeleteBuffers(1, &EBO);
+    glDeleteProgram(shader);
     glfwTerminate();
-
     return 0;
 }
