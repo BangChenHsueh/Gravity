@@ -10,11 +10,15 @@ public:
 
     void update(float deltaTime);
     void draw() const;
+    void reset();
 
     glm::vec3 position;
     glm::vec3 color;
     glm::vec3 velocity;
+    glm::vec3 startPosition;
+    glm::vec3 startVelocity;
     float speedMultiplier;
+    float radius;
 
 private:
     unsigned int VAO, VBO, EBO;

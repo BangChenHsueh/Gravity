@@ -126,41 +126,53 @@ int main(){
         "D:/Code/Gravity/src/shader.vert",
         "D:/Code/Gravity/src/shader.frag"
     );
+    
+    //creating spheres list
+    std::vector<Sphere> spheres;
+
+    spheres.reserve(2);
+
+    // Sphere 1: Left side, Blue
+    spheres.emplace_back(1.0f, 32, 32); 
+    spheres[0].position      = glm::vec3(-2.5f, 4.0f, -6.0f);
+    spheres[0].startPosition = spheres[0].position;
+    spheres[0].color         = glm::vec3(0.3f, 0.6f, 1.0f);
+    spheres[0].velocity      = glm::vec3(0.0f, 0.0f, 0.0f);
+    spheres[0].startVelocity = spheres[0].velocity;
+
+    // Sphere 2: Right side, Pink
+    spheres.emplace_back(1.5f, 32, 32);
+    spheres[1].position      = glm::vec3(2.5f, 4.0f, -6.0f);
+    spheres[1].startPosition = spheres[1].position;
+    spheres[1].color         = glm::vec3(1.0f, 0.3f, 0.6f);
+    spheres[1].velocity      = glm::vec3(0.0f, 0.0f, 0.0f);
+    spheres[1].startVelocity = spheres[1].velocity;
+
+    // Sphere s1(1.0f, 32, 32);
+    // s1.position = glm::vec3(-2.5f, 4.0f, -6.0f);
+    // s1.startPosition = s1.position;
+    // s1.color    = glm::vec3(0.3f, 0.6f, 1.0f);
+    // s1.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+    // s1.startVelocity = s1.velocity;
+    // spheres.push_back(s1);
+
+    // Sphere s2(1.0f, 32, 32);
+    // s2.position = glm::vec3(2.5f, 4.0f, -6.0f);
+    // s2.startPosition = s2.position;
+    // s2.color = glm::vec3(1.0f, 0.3f, 0.6f);
+    // s2.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+    // s2.startVelocity = s2.velocity;
+    // spheres.push_back(s2);
 
     // Build sphere mesh
-    Sphere sphere(1.0f, 32, 32);
-    sphere.position = glm::vec3(0.0f, 4.0f, -5.0f);
-    sphere.color    = glm::vec3(0.3f, 0.6f, 1.0f);
+    // Sphere sphere(1.0f, 32, 32);
+    // sphere.position = glm::vec3(0.0f, 4.0f, -5.0f);
+    // sphere.color    = glm::vec3(0.3f, 0.6f, 1.0f);
 
     //define sphere velocity
-    sphere.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+    // sphere.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
     // sphere.speedMultiplier = 0.0;
     
-    // std::vector<float>        verts;
-    // std::vector<unsigned int> indices;
-    // // buildSphere(1.0f, 32, 32, verts, indices);
-
-    // unsigned int VAO, VBO, EBO;
-    // glGenVertexArrays(1, &VAO);
-    // glGenBuffers(1, &VBO);
-    // glGenBuffers(1, &EBO);
-
-    // glBindVertexArray(VAO);
-
-    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // glBufferData(GL_ARRAY_BUFFER, verts.size()*sizeof(float), verts.data(), GL_STATIC_DRAW);
-
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    // // layout 0 = position (xyz)
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)0);
-    // glEnableVertexAttribArray(0);
-    // // layout 1 = normal (xyz)
-    // glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)(3*sizeof(float)));
-    // glEnableVertexAttribArray(1);
-
-    // glBindVertexArray(0);
     //reset clock
     lastFrame = (float)glfwGetTime();
 
@@ -172,17 +184,19 @@ int main(){
 
         process_input(window);
 
+        std::cout << cameraPos.x << "+" << cameraPos.y << "+" << cameraPos.z << "\n";
+
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader);
 
-        sphere.update(deltaTime);
+        // sphere.update(deltaTime);
 
         // build model matrix from sphere's position
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
-        glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
-        glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(sphere.color));
+        // glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
+        // glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        // glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(sphere.color));
 
         // Matrices
         // glm::mat4 model      = glm::mat4(1.0f);
@@ -197,9 +211,37 @@ int main(){
         // Lighting
         glUniform3f(glGetUniformLocation(shader, "lightPos"),    2.0f, 2.0f, 2.0f);
         glUniform3f(glGetUniformLocation(shader, "lightColor"),  1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(shader, "objectColor"), 0.3f, 0.6f, 1.0f);
+        // glUniform3f(glGetUniformLocation(shader, "objectColor"), 0.3f, 0.6f, 1.0f);
 
-        sphere.draw();
+        // sphere.draw();
+
+        for(int i = 0; i < spheres.size(); i++){
+            spheres[i].update(deltaTime);
+
+            // 1. Start with an identity matrix
+            glm::mat4 model = glm::mat4(1.0f);
+            
+            // 2. Translate to position first
+            model = glm::translate(model, spheres[i].position);
+            
+            // 3. 🆕 Scale the model matrix dynamically based on which sphere it is!
+            float scaleFactor = (i == 0) ? 1.0f : 2.0f;
+            model = glm::scale(model, glm::vec3(scaleFactor));
+
+            // 4. Send matrix to shader pipeline
+            glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+            glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(spheres[i].color));
+
+            spheres[i].draw();
+
+            // spheres[i].update(deltaTime);
+
+            // glm::mat4 model = glm::translate(glm::mat4(1.0f), spheres[i].position);
+            // glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+            // glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(spheres[i].color));
+
+            // spheres[i].draw();
+        }
 
         // glBindVertexArray(VAO);
         // glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
