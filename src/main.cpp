@@ -17,6 +17,7 @@
 // ── Constants ───────────────────────────────────────────────────────────────
 const unsigned int SCR_WIDTH  = 1600;
 const unsigned int SCR_HEIGHT = 1200;
+const float GRAVITY = -9.8f;
 
 // ── Camera state ────────────────────────────────────────────────────────────
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -128,8 +129,12 @@ int main(){
 
     // Build sphere mesh
     Sphere sphere(1.0f, 32, 32);
-    sphere.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    sphere.position = glm::vec3(0.0f, 4.0f, -5.0f);
     sphere.color    = glm::vec3(0.3f, 0.6f, 1.0f);
+
+    //define sphere velocity
+    sphere.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+    // sphere.speedMultiplier = 0.0;
     
     // std::vector<float>        verts;
     // std::vector<unsigned int> indices;
@@ -156,6 +161,8 @@ int main(){
     // glEnableVertexAttribArray(1);
 
     // glBindVertexArray(0);
+    //reset clock
+    lastFrame = (float)glfwGetTime();
 
     // Render loop
     while(!glfwWindowShouldClose(window)){
@@ -170,20 +177,19 @@ int main(){
 
         glUseProgram(shader);
 
+        sphere.update(deltaTime);
+
         // build model matrix from sphere's position
         glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
         glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(sphere.color));
 
-
-
         // Matrices
         // glm::mat4 model      = glm::mat4(1.0f);
         glm::mat4 view       = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 projection = glm::perspective(glm::radians(fov),
-                                 (float)SCR_WIDTH/SCR_HEIGHT, 0.1f, 100.0f);
-
-                                 
+        (float)SCR_WIDTH/SCR_HEIGHT, 0.1f, 100.0f);
+              
         // glUniformMatrix4fv(glGetUniformLocation(shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));

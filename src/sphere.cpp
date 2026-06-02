@@ -4,7 +4,10 @@
 const float PI = 3.14159265359f;
 
 Sphere::Sphere(float radius, int stacks, int slices)
-    : position(0.0f), color(0.3f, 0.6f, 1.0f)
+    : position(0.0f), 
+    color(0.3f, 0.6f, 1.0f),
+    velocity(0.0f, 0.0f, 0.0f),
+    speedMultiplier(1.0f)
 {
     build(radius, stacks, slices);
 }
@@ -76,4 +79,22 @@ void Sphere::draw() const {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+}
+
+void Sphere::update(float deltaTime){
+    float gravityConstant = -9.8f;
+    velocity.y += gravityConstant*deltaTime;
+    position += velocity * speedMultiplier * deltaTime;
+
+    //ground detection(delete future, when using planets)
+    float floorY = -2.0f;
+    if(position.y <= floorY && velocity.y < 0.0f){
+        position.y = floorY;
+
+        velocity.y = -velocity.y * 0.65f;
+
+        if(std::abs(velocity.y)<0.2f){
+            velocity.y = 0.0f;
+        }
+    }
 }
