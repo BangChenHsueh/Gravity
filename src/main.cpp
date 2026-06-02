@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include "sphere.h"
 
 // ── GLM (header-only math library) ─────────────────────────────────────────
 // Drop glm/ folder into dependencies/ and add to include_directories in CMake
@@ -14,8 +15,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 // ── Constants ───────────────────────────────────────────────────────────────
-const unsigned int SCR_WIDTH  = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH  = 1600;
+const unsigned int SCR_HEIGHT = 1200;
 
 // ── Camera state ────────────────────────────────────────────────────────────
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -27,7 +28,7 @@ float pitch =   0.0f;
 float lastX = SCR_WIDTH  / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool  firstMouse = true;
-float fov = 45.0f;
+float fov = 90.0f;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -103,39 +104,6 @@ unsigned int buildProgram(const char* vertPath, const char* fragPath){
     return p;
 }
 
-// ── Sphere generation ───────────────────────────────────────────────────────
-// Produces interleaved [x,y,z, nx,ny,nz] vertices + index buffer.
-// stacks/slices control tessellation quality (32/32 is smooth enough).
-void buildSphere(float radius, int stacks, int slices,
-                 std::vector<float>& verts, std::vector<unsigned int>& idx)
-{
-    const float PI = 3.14159265359f;
-    for(int i = 0; i <= stacks; ++i){
-        float phi   = PI/2 - i * PI / stacks;       // latitude: 90°→-90°
-        float y     = radius * sin(phi);
-        float cosPhi = cos(phi);
-
-        for(int j = 0; j <= slices; ++j){
-            float theta = j * 2*PI / slices;         // longitude: 0→360°
-            float x = radius * cosPhi * cos(theta);
-            float z = radius * cosPhi * sin(theta);
-            // position
-            verts.push_back(x); verts.push_back(y); verts.push_back(z);
-            // normal (unit sphere: normal == position / radius)
-            verts.push_back(x/radius); verts.push_back(y/radius); verts.push_back(z/radius);
-        }
-    }
-
-    for(int i = 0; i < stacks; ++i){
-        for(int j = 0; j < slices; ++j){
-            unsigned int row1 = i   * (slices+1) + j;
-            unsigned int row2 = (i+1) * (slices+1) + j;
-            idx.push_back(row1); idx.push_back(row2);   idx.push_back(row1+1);
-            idx.push_back(row1+1); idx.push_back(row2); idx.push_back(row2+1);
-        }
-    }
-}
-
 // ── Main ────────────────────────────────────────────────────────────────────
 int main(){
     glfwInit();
@@ -159,31 +127,35 @@ int main(){
     );
 
     // Build sphere mesh
-    std::vector<float>        verts;
-    std::vector<unsigned int> indices;
-    buildSphere(1.0f, 32, 32, verts, indices);
+    Sphere sphere(1.0f, 32, 32);
+    sphere.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    sphere.color    = glm::vec3(0.3f, 0.6f, 1.0f);
+    
+    // std::vector<float>        verts;
+    // std::vector<unsigned int> indices;
+    // // buildSphere(1.0f, 32, 32, verts, indices);
 
-    unsigned int VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    // unsigned int VAO, VBO, EBO;
+    // glGenVertexArrays(1, &VAO);
+    // glGenBuffers(1, &VBO);
+    // glGenBuffers(1, &EBO);
 
-    glBindVertexArray(VAO);
+    // glBindVertexArray(VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, verts.size()*sizeof(float), verts.data(), GL_STATIC_DRAW);
+    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // glBufferData(GL_ARRAY_BUFFER, verts.size()*sizeof(float), verts.data(), GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    // layout 0 = position (xyz)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // layout 1 = normal (xyz)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(1);
+    // // layout 0 = position (xyz)
+    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)0);
+    // glEnableVertexAttribArray(0);
+    // // layout 1 = normal (xyz)
+    // glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)(3*sizeof(float)));
+    // glEnableVertexAttribArray(1);
 
-    glBindVertexArray(0);
+    // glBindVertexArray(0);
 
     // Render loop
     while(!glfwWindowShouldClose(window)){
@@ -198,13 +170,21 @@ int main(){
 
         glUseProgram(shader);
 
+        // build model matrix from sphere's position
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
+        glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(sphere.color));
+
+
+
         // Matrices
-        glm::mat4 model      = glm::mat4(1.0f);
+        // glm::mat4 model      = glm::mat4(1.0f);
         glm::mat4 view       = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 projection = glm::perspective(glm::radians(fov),
                                  (float)SCR_WIDTH/SCR_HEIGHT, 0.1f, 100.0f);
 
-        glUniformMatrix4fv(glGetUniformLocation(shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
+                                 
+        // glUniformMatrix4fv(glGetUniformLocation(shader, "model"),      1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(shader, "view"),       1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
@@ -213,17 +193,19 @@ int main(){
         glUniform3f(glGetUniformLocation(shader, "lightColor"),  1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(shader, "objectColor"), 0.3f, 0.6f, 1.0f);
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        sphere.draw();
+
+        // glBindVertexArray(VAO);
+        // glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
+        // glBindVertexArray(0);P
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    // glDeleteVertexArrays(1, &VAO);
+    // glDeleteBuffers(1, &VBO);
+    // glDeleteBuffers(1, &EBO);
     glDeleteProgram(shader);
     glfwTerminate();
     return 0;
