@@ -16,7 +16,11 @@ include_directories(
     dependencies/glm
 )
 
-add_executable(GravityWindow src/main.cpp)
+add_executable(GravityWindow 
+    src/main.cpp
+    src/sphere.h
+    src/sphere.cpp
+)
 
 target_link_libraries(GravityWindow glfw glad opengl32)
 
