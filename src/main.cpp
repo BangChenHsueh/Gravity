@@ -139,10 +139,10 @@ int main(){
 
     // Sphere 1: Left side, Blue
     spheres.emplace_back(1.0f, 32, 32, pow(10, 2)); 
-    spheres[0].position      = glm::vec3(-10.0f, 4.0f, -6.0f);
+    spheres[0].position      = glm::vec3(35.0f, 4.0f, -6.0f);
     spheres[0].startPosition = spheres[0].position;
     spheres[0].color         = glm::vec3(0.3f, 0.6f, 1.0f);
-    spheres[0].velocity      = glm::vec3(0.0f, 0.0f, 5.0f);
+    spheres[0].velocity      = glm::vec3(0.0f, 0.0f, 21.1f);
     spheres[0].startVelocity = spheres[0].velocity;
     // spheres[0].mass          = 10.0f;  
 
@@ -159,14 +159,14 @@ int main(){
     spheres[2].position      = glm::vec3(20.0f, 4.0f, -6.0f);
     spheres[2].startPosition = spheres[2].position;
     spheres[2].color         = glm::vec3(0.3f, 0.6f, 1.0f);
-    spheres[2].velocity      = glm::vec3(0.0f, 0.0f, 6.0f);
+    spheres[2].velocity      = glm::vec3(0.0f, 0.0f, 14.9f);
     spheres[2].startVelocity = spheres[2].velocity;
 
     spheres.emplace_back(3.0f, 32, 32, pow(10, 5));
     spheres[3].position      = glm::vec3(50.0f, 4.0f, -6.0f);
     spheres[3].startPosition = spheres[3].position;
     spheres[3].color         = glm::vec3(1.0f, 0.3f, 0.6f);
-    spheres[3].velocity      = glm::vec3(0.0f, 0.0f, 0.05f);
+    spheres[3].velocity      = glm::vec3(0.0f, 0.0f, 0.0f);
     spheres[3].startVelocity = spheres[3].velocity;
 
     // Sphere s1(1.0f, 32, 32);
@@ -236,7 +236,7 @@ int main(){
 
         //draw grid
         glUniform1i(glGetUniformLocation(shader, "useLighting"), 0);
-        flatPlane.draw(shader, glm::vec3(1.0f, 1.0f, 1.0f));
+        flatPlane.draw(shader, glm::vec3(1.0f, 1.0f, 1.0f), spheres);
 
         //calculate force of gravity
         Sphere::calculateGravity(spheres, G);
