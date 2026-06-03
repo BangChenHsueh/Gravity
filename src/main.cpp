@@ -18,9 +18,10 @@
 const unsigned int SCR_WIDTH  = 1600;
 const unsigned int SCR_HEIGHT = 1200;
 const float GRAVITY = -9.8f;
+const float G = 6.67 * pow(10, -2);
 
 // ── Camera state ────────────────────────────────────────────────────────────
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraPos   = glm::vec3(0.0f, 10.0f, -6.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
@@ -130,23 +131,25 @@ int main(){
     //creating spheres list
     std::vector<Sphere> spheres;
 
-    spheres.reserve(2);
+    spheres.reserve(3);
 
     // Sphere 1: Left side, Blue
-    spheres.emplace_back(1.0f, 32, 32); 
-    spheres[0].position      = glm::vec3(-2.5f, 4.0f, -6.0f);
+    spheres.emplace_back(1.0f, 32, 32, pow(10, 2)); 
+    spheres[0].position      = glm::vec3(-10.0f, 4.0f, -6.0f);
     spheres[0].startPosition = spheres[0].position;
     spheres[0].color         = glm::vec3(0.3f, 0.6f, 1.0f);
-    spheres[0].velocity      = glm::vec3(0.0f, 0.0f, 0.0f);
+    spheres[0].velocity      = glm::vec3(0.0f, 0.0f, 5.0f);
     spheres[0].startVelocity = spheres[0].velocity;
+    // spheres[0].mass          = 10.0f;  
 
     // Sphere 2: Right side, Pink
-    spheres.emplace_back(1.5f, 32, 32);
-    spheres[1].position      = glm::vec3(2.5f, 4.0f, -6.0f);
+    spheres.emplace_back(1.5f, 32, 32, pow(10, 4));
+    spheres[1].position      = glm::vec3(10.0f, 4.0f, -6.0f);
     spheres[1].startPosition = spheres[1].position;
     spheres[1].color         = glm::vec3(1.0f, 0.3f, 0.6f);
-    spheres[1].velocity      = glm::vec3(0.0f, 0.0f, 0.0f);
+    spheres[1].velocity      = glm::vec3(1.0f, 0.0f, -1.05f);
     spheres[1].startVelocity = spheres[1].velocity;
+    // spheres[1].mass          = 50.0f;
 
     // Sphere s1(1.0f, 32, 32);
     // s1.position = glm::vec3(-2.5f, 4.0f, -6.0f);
@@ -173,6 +176,7 @@ int main(){
     // sphere.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
     // sphere.speedMultiplier = 0.0;
     
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     //reset clock
     lastFrame = (float)glfwGetTime();
 
@@ -183,8 +187,6 @@ int main(){
         lastFrame = current;
 
         process_input(window);
-
-        std::cout << cameraPos.x << "+" << cameraPos.y << "+" << cameraPos.z << "\n";
 
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -215,18 +217,19 @@ int main(){
 
         // sphere.draw();
 
+        //calculate force of gravity
+        Sphere::calculateGravity(spheres, G);
+
         for(int i = 0; i < spheres.size(); i++){
             spheres[i].update(deltaTime);
 
             // 1. Start with an identity matrix
             glm::mat4 model = glm::mat4(1.0f);
-            
-            // 2. Translate to position first
+
             model = glm::translate(model, spheres[i].position);
             
-            // 3. 🆕 Scale the model matrix dynamically based on which sphere it is!
             float scaleFactor = (i == 0) ? 1.0f : 2.0f;
-            model = glm::scale(model, glm::vec3(scaleFactor));
+            model = glm::scale(model, glm::vec3(spheres[i].radius));
 
             // 4. Send matrix to shader pipeline
             glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
@@ -239,7 +242,7 @@ int main(){
             // glm::mat4 model = glm::translate(glm::mat4(1.0f), spheres[i].position);
             // glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
             // glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(spheres[i].color));
-
+            std::cout << spheres[i].position.x << "+" << spheres[i].position.y << "+" << spheres[i].position.x << "\n"; 
             // spheres[i].draw();
         }
 

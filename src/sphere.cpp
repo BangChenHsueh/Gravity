@@ -3,9 +3,12 @@
 
 const float PI = 3.14159265359f;
 
-Sphere::Sphere(float radius, int stacks, int slices)
+Sphere::Sphere(float radius, int stacks, int slices, float mass)
     : 
-    speedMultiplier(1.0f)
+    speedMultiplier(1.0f),
+    mass(mass),
+    accumulatedForce(0.0f)
+
 {
     this->radius = radius;
     position = glm::vec3(0.0f);
@@ -84,16 +87,15 @@ void Sphere::draw() const {
 }
 
 void Sphere::update(float deltaTime){
-    float gravityConstant = -100.0f;
-    velocity.y += gravityConstant*deltaTime;
+    glm::vec3 acceleration = accumulatedForce/mass;
+
+    velocity += acceleration*deltaTime;
     position += velocity * speedMultiplier * deltaTime;
 
     //ground detection(delete future, when using planets)
-    float floorY = -2.0f;
-    if((position.y - radius) <= floorY && velocity.y < 0.0f){
-        position.y = (floorY + radius);
-
-        velocity.y = -velocity.y * 1.0f;
+    // float floorY = -2.0f;
+    if(velocity.y < 0.0f){
+        velocity.y = -velocity.y;
 
         if(std::abs(velocity.y)<0.2f){
             velocity.y = 0.0f;
@@ -104,4 +106,26 @@ void Sphere::update(float deltaTime){
 void Sphere::reset(){
     position = startPosition;
     velocity = startVelocity;
+}
+
+void Sphere::calculateGravity(std::vector<Sphere>& spheres, float G){
+    for(auto& s : spheres){
+        s.accumulatedForce = glm::vec3(0.0f);
+    }
+
+    for(int i = 0; i < spheres.size(); i++){
+        for(int j = i + 1; j < spheres.size(); j++){
+            glm::vec3 direction = spheres[j].position - spheres[i].position;
+            float distance = glm::length(direction);
+
+            if(distance < 0.1f) distance = 0.1f;
+
+            //f = gmm/r^2
+            float forceMagnitude = (G * spheres[j].mass * spheres[i].mass)/(distance*distance);
+            glm::vec3 forceVector = glm::normalize(direction) * forceMagnitude;
+
+            spheres[i].accumulatedForce += forceVector;
+            spheres[j].accumulatedForce -= forceVector;
+        }
+    }
 }
