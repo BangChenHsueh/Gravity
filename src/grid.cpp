@@ -74,15 +74,15 @@ void Grid::draw(unsigned int shaderProgram, const glm::vec3& color, const std::v
     
     std::vector<Vertex> dynamicVertices = baseVertices;
 
-    float alpha = 0.001f;
+    float alpha = 0.01f;
     float epsilon = 2.0f;
 
     for(auto& vertex : dynamicVertices){
         float gravityPull = 0.0f;
 
         for(const auto& sphere : spheres){
-            float dx = vertex.position.x - sphere.position.x;
-            float dz = vertex.position.z - sphere.position.z;
+            float dx = vertex.position.x - sphere.position4D[1];
+            float dz = vertex.position.z - sphere.position4D[3];
             float dist = std::sqrt((dx*dx) + (dz*dz));
 
             if(dist < sphere.radius){
