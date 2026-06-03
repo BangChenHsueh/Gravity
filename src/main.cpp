@@ -7,6 +7,7 @@
 #include <vector>
 #include <cmath>
 #include "sphere.h"
+#include "grid.h"
 
 // ── GLM (header-only math library) ─────────────────────────────────────────
 // Drop glm/ folder into dependencies/ and add to include_directories in CMake
@@ -66,7 +67,7 @@ void process_input(GLFWwindow* window){
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    float speed = 2.5f * deltaTime;
+    float speed = 20.0f * deltaTime;
     if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cameraPos += speed * cameraFront;
     if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cameraPos -= speed * cameraFront;
     if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
@@ -128,10 +129,13 @@ int main(){
         "D:/Code/Gravity/src/shader.frag"
     );
     
+    //creates grid
+    Grid flatPlane(-200.0f, 200.0f, 1.0f, 4.0f);
+
     //creating spheres list
     std::vector<Sphere> spheres;
 
-    spheres.reserve(3);
+    spheres.reserve(4);
 
     // Sphere 1: Left side, Blue
     spheres.emplace_back(1.0f, 32, 32, pow(10, 2)); 
@@ -147,9 +151,23 @@ int main(){
     spheres[1].position      = glm::vec3(10.0f, 4.0f, -6.0f);
     spheres[1].startPosition = spheres[1].position;
     spheres[1].color         = glm::vec3(1.0f, 0.3f, 0.6f);
-    spheres[1].velocity      = glm::vec3(1.0f, 0.0f, -1.05f);
+    spheres[1].velocity      = glm::vec3(10.0f, 0.0f, 5.05f);
     spheres[1].startVelocity = spheres[1].velocity;
     // spheres[1].mass          = 50.0f;
+
+    spheres.emplace_back(1.0f, 32, 32, pow(10, 2)); 
+    spheres[2].position      = glm::vec3(20.0f, 4.0f, -6.0f);
+    spheres[2].startPosition = spheres[2].position;
+    spheres[2].color         = glm::vec3(0.3f, 0.6f, 1.0f);
+    spheres[2].velocity      = glm::vec3(0.0f, 0.0f, 6.0f);
+    spheres[2].startVelocity = spheres[2].velocity;
+
+    spheres.emplace_back(3.0f, 32, 32, pow(10, 5));
+    spheres[3].position      = glm::vec3(50.0f, 4.0f, -6.0f);
+    spheres[3].startPosition = spheres[3].position;
+    spheres[3].color         = glm::vec3(1.0f, 0.3f, 0.6f);
+    spheres[3].velocity      = glm::vec3(0.0f, 0.0f, 0.05f);
+    spheres[3].startVelocity = spheres[3].velocity;
 
     // Sphere s1(1.0f, 32, 32);
     // s1.position = glm::vec3(-2.5f, 4.0f, -6.0f);
@@ -176,7 +194,6 @@ int main(){
     // sphere.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
     // sphere.speedMultiplier = 0.0;
     
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     //reset clock
     lastFrame = (float)glfwGetTime();
 
@@ -217,9 +234,14 @@ int main(){
 
         // sphere.draw();
 
+        //draw grid
+        glUniform1i(glGetUniformLocation(shader, "useLighting"), 0);
+        flatPlane.draw(shader, glm::vec3(1.0f, 1.0f, 1.0f));
+
         //calculate force of gravity
         Sphere::calculateGravity(spheres, G);
 
+        glUniform1i(glGetUniformLocation(shader, "useLighting"), 1);
         for(int i = 0; i < spheres.size(); i++){
             spheres[i].update(deltaTime);
 
@@ -242,7 +264,7 @@ int main(){
             // glm::mat4 model = glm::translate(glm::mat4(1.0f), spheres[i].position);
             // glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
             // glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, glm::value_ptr(spheres[i].color));
-            std::cout << spheres[i].position.x << "+" << spheres[i].position.y << "+" << spheres[i].position.x << "\n"; 
+            // std::cout << spheres[i].position.x << "+" << spheres[i].position.y << "+" << spheres[i].position.x << "\n"; 
             // spheres[i].draw();
         }
 

@@ -20,6 +20,8 @@ add_executable(GravityWindow
     src/main.cpp
     src/sphere.h
     src/sphere.cpp
+    src/grid.cpp
+    src/grid.h
 )
 
 target_link_libraries(GravityWindow glfw glad opengl32)
