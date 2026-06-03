@@ -14,15 +14,18 @@ public:
     void draw() const;
     void reset();
 
-    glm::vec3 position;
+    glm::vec4 position4D;
     glm::vec3 color;
-    glm::vec3 velocity;
-    glm::vec3 startPosition;
-    glm::vec3 startVelocity;
-    glm::vec3 accumulatedForce;
+    glm::vec4 velocity4D;
+    glm::vec4 startPosition;
+    glm::vec4 startVelocity;
+    glm::vec4 accumulatedForce;
     float speedMultiplier;
     float radius;
     float mass;
+    bool isStaticStar;
+
+    void updateTensorPhysics(float deltaTime, float starMass, const glm::vec4& starPos, float c, float G);
 
 private:
     unsigned int VAO, VBO, EBO;
